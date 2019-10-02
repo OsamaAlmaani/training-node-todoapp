@@ -15,65 +15,66 @@ let currentID = 0;
 // });
 
 redisClient.on("error", err => {
-    console.log("Error " + err);
+	console.log("Error " + err);
 });
 
 app.get("/save", function(req, res) {
-    if (!req.query.text) {
-        res.send("invalid");
-        return;
-    }
+	if (!req.query.text) {
+		res.send("invalid");
+		return;
+	}
 
-    currentID += 1;
-    redisClient.hset(
-        [
-            "todoList",
-            `todo:${currentID.toString()}`,
-            JSON.stringify({
-                id: currentID,
-                text: req.query.text,
-                status: 0
-            })
-        ],
-        redis.print
-    );
-    io.sockets.emit("onAdd", { id: currentID, text: req.query.text, status: 0 });
-    res.send(currentID.toString());
+	currentID += 1;
+	redisClient.hset(
+		[
+			"todoList",
+			`todo:${currentID.toString()}`,
+			JSON.stringify({
+				id: currentID,
+				text: req.query.text,
+				status: 0
+			})
+		],
+		redis.print
+	);
+
+	io.sockets.emit("onAdd", { id: currentID, text: req.query.text, status: 0 });
+	res.send(currentID.toString());
 });
 
 app.get("/get", function(req, res) {
-    redisClient.hgetall("todoList", function(err, replies) {
-        if (!replies) {
-            res.json([]);
-            return;
-        }
-        res.header("Access-Control-Allow-Origin", "*");
-        res.json(Object.keys(replies).map(key => JSON.parse(replies[key])));
-    });
+	redisClient.hgetall("todoList", function(err, replies) {
+		if (!replies) {
+			res.json([]);
+			return;
+		}
+		res.header("Access-Control-Allow-Origin", "*");
+		res.json(Object.keys(replies).map(key => JSON.parse(replies[key])));
+	});
 });
 
 app.get("/changeStatus", function(req, res) {
-    if (!req.query.id && !req.query.status) {
-        res.send("invalid");
-        return;
-    }
+	if (!req.query.id && !req.query.status) {
+		res.send("invalid");
+		return;
+	}
 
-    io.sockets.emit("onStatusChanged", { id: req.query.id, status: req.query.status });
-    let record = {};
-    redisClient.hget(["todoList", `todo:${req.query.id}`], function(err, reply) {
-        record = JSON.parse(reply);
-        record.status = req.query.status;
-        redisClient.hset(["todoList", `todo:${req.query.id}`, JSON.stringify(record)], redis.print);
-        res.json({ message: "ok" });
-    });
+	io.sockets.emit("onStatusChanged", { id: req.query.id, status: req.query.status });
+	let record = {};
+	redisClient.hget(["todoList", `todo:${req.query.id}`], function(err, reply) {
+		record = JSON.parse(reply);
+		record.status = req.query.status;
+		redisClient.hset(["todoList", `todo:${req.query.id}`, JSON.stringify(record)], redis.print);
+		res.json({ message: "ok" });
+	});
 });
 
 app.get("/", function(req, res) {
-    res.sendFile(__dirname + "/Client.html");
+	res.sendFile(__dirname + "/Client.html");
 });
 
 http.listen(4000, function() {
-    console.log("listening on *:4000");
+	console.log("listening on *:4000");
 });
 
 // redisClient.quit();
